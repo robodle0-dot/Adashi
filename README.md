@@ -1,0 +1,38 @@
+# Adashi Dwelling Fire Text Alert (Tampermonkey)
+
+`adashi-dwelling-fire-alert.user.js` watches the live Adashi page and texts your phone
+**once** when a new call with a code beginning in **69E** (e.g. `69E01`, `69-E-1`) or **DW**
+(e.g. `DW`, `DWF`, `DWELL`) appears.
+
+## Setup
+
+1. **Pick how alerts get to your phone** (set `PROVIDER` in the SETTINGS block):
+   - `twilio`: a real SMS. Make a Twilio account, buy a number (about $1/month plus about $0.01 per text),
+     and fill in `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM` and `TO_NUMBERS`.
+     US numbers need A2P 10DLC / toll-free verification before texts will deliver.
+   - `ntfy`: free. Install the **ntfy** app on your phone, subscribe to a long random topic
+     name, and put that same name in `NTFY_TOPIC`. This sends a push notification, not an SMS.
+     Set the topic to "urgent" in the app so it can sound even when your phone is silenced.
+   - `textbelt`: SMS with a paid key from textbelt.com. The key `textbelt` gives 1 free text per day for testing.
+2. **Fix the `@match` lines** so they match your Adashi address. Open Adashi, copy the
+   address bar (for example `https://cad.mycounty.gov/adashi/...`), and change the line to
+   `// @match https://cad.mycounty.gov/*`.
+3. In Firefox: Tampermonkey icon → *Create a new script* → delete the template → paste the file → **Save**.
+4. Reload Adashi. Click the Tampermonkey icon → **Send test alert** to check delivery.
+5. Use Tampermonkey icon → **Show matching calls on screen** to check that it sees your calls.
+
+## Behavior
+- Calls already on screen when the page loads do **not** text. Only calls that appear later do.
+  (Set `ALERT_ON_CALLS_PRESENT_AT_LOAD: true` to change that.)
+- Each call texts once. It is identified by its incident number, so later status, unit or
+  timer changes do not send another text. Calls are remembered for 24 hours, including across page reloads and multiple tabs.
+- `DWI` is ignored, and so are addresses like "69 E Main St". Add more codes to ignore in `EXCLUDE_CODES`.
+- The Adashi tab must stay open (it can be in the background). Keep the computer awake.
+- Use the menu to **Pause / resume alerts** or **Forget alerted calls**.
+
+## If something is off
+- **Duplicate texts, or none at all:** right-click a call row in Adashi → *Inspect*. Find
+  the element for one whole call (often a `<tr>`) and put a CSS selector for it in `ROW_SELECTOR`.
+  If your incident numbers look different from `2026-001234`, adjust `INCIDENT_ID_PATTERN`.
+- Set `DEBUG: true` and open the console (F12) to see what it is doing.
+- Your Twilio token sits in plain text inside the script. Only use this on a computer you trust.
