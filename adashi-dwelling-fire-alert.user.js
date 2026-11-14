@@ -4,10 +4,7 @@
 // @version      1.0.0
 // @description  Texts your phone the first time a dwelling fire call (69E* / DW*) appears in Adashi.
 // @author       you
-// ---- EDIT THESE @match LINES to the address you use for Adashi (see README) ----
-// @match        *://*.adashi.com/*
-// @match        *://*.adashisystems.com/*
-// -------------------------------------------------------------------------------
+// @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
@@ -28,7 +25,7 @@
   const CONFIG = {
     // Which service sends the alert: 'twilio' (real SMS), 'ntfy' (free push
     // notification via the ntfy app), or 'textbelt' (SMS, simple paid key).
-    PROVIDER: 'twilio',
+    PROVIDER: 'ntfy',
 
     // --- Twilio (https://www.twilio.com) ---
     TWILIO_ACCOUNT_SID: 'ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx',
@@ -38,7 +35,7 @@
 
     // --- ntfy (https://ntfy.sh) — install the ntfy app & subscribe to this topic.
     // Pick a long, hard-to-guess topic name; anyone who knows it can read it.
-    NTFY_TOPIC: 'change-me-to-something-random-8f3k2',
+    NTFY_TOPIC: 'truck5_calls_access',
 
     // --- Textbelt (https://textbelt.com) — uses TO_NUMBERS above ---
     TEXTBELT_KEY: 'textbelt', // 'textbelt' = 1 free text/day for testing
