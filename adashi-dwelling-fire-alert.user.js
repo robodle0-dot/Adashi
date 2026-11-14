@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Adashi Dwelling Fire Text Alert
 // @namespace    adashi-dwelling-fire-alert
-// @version      1.0.0
-// @description  Texts your phone the first time a dwelling fire call (69E* / DW*) appears in Adashi.
+// @version      1.1.0
+// @description  Texts your phone the first time a fire call (69E* / 69D* / DW* / BOX*) appears in Adashi.
 // @author       you
 // @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
 // @grant        GM_xmlhttpRequest
@@ -41,11 +41,15 @@
     TEXTBELT_KEY: 'textbelt', // 'textbelt' = 1 free text/day for testing
 
     // Call-type patterns. A call alerts if ANY of these match its row text.
-    //   69E…  : MPDS Protocol 69 Echo (e.g. 69E01, 69-E-1). "69 E Main St" is NOT matched.
+    //   69E… / 69D… : MPDS Protocol 69 Echo/Delta (e.g. 69E01, 69-D-6).
+    //                 Addresses like "69 E Main St" or "69 D St" are NOT matched.
     //   DW…   : e.g. DW, DWF, DWELL, DWELLING (uppercase only)
+    //   BOX…  : e.g. BOX, BOXALARM, BOX1 (uppercase only)
     CODE_PATTERNS: [
       /\b69-?E-?\d{0,2}[A-Z]?\b/,
+      /\b69-?D-?\d{0,2}[A-Z]?\b/,
       /\bDW[A-Z0-9]*\b/,
+      /\bBOX[A-Z0-9]*\b/,
     ],
     // Codes that match a pattern above but should be ignored.
     EXCLUDE_CODES: ['DWI'],
@@ -181,7 +185,7 @@
       await request({
         method: 'POST',
         url: 'https://ntfy.sh/' + encodeURIComponent(CONFIG.NTFY_TOPIC),
-        headers: { Title: 'Dwelling fire', Priority: 'urgent', Tags: 'fire' },
+        headers: { Title: 'Fire call', Priority: 'urgent', Tags: 'fire' },
         data: message,
       });
     } else if (p === 'textbelt') {
@@ -200,7 +204,7 @@
   }
 
   function buildMessage(code, text) {
-    let body = `DWELLING FIRE (${code}): ${text}`;
+    let body = `FIRE CALL (${code}): ${text}`;
     if (body.length > CONFIG.MAX_MESSAGE_CHARS) body = body.slice(0, CONFIG.MAX_MESSAGE_CHARS - 1) + '…';
     return body;
   }
@@ -209,7 +213,7 @@
     const msg = buildMessage(code, text);
     log('ALERT', msg);
     if (CONFIG.DESKTOP_NOTIFICATION) {
-      try { GM_notification({ title: 'Dwelling fire', text: msg, timeout: 15000 }); } catch (e) { /* ignore */ }
+      try { GM_notification({ title: 'Fire call', text: msg, timeout: 15000 }); } catch (e) { /* ignore */ }
     }
     try {
       await sendAlert(msg);
