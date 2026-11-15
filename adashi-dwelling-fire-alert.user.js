@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Adashi Dwelling Fire Text Alert
 // @namespace    adashi-dwelling-fire-alert
-// @version      1.4.0
+// @version      1.5.0
 // @description  Alerts your phone the first time a fire call (69E* / 69D* / DW* / BOX*) appears in Adashi, with its address.
 // @author       you
 // @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
@@ -41,13 +41,13 @@
     TEXTBELT_KEY: 'textbelt', // 'textbelt' = 1 free text/day for testing
 
     // Call-type patterns. A call alerts if ANY of these match.
-    //   69E… / 69D… : MPDS Protocol 69 Echo/Delta (e.g. 69E01, 69-D-6).
+    //   69E… / 69D… : 69E or 69D followed by any letters/digits (usually 5
+    //                 characters total, e.g. 69E01, 69D06, 69EA1; up to 6 allowed).
     //                 Addresses like "69 E Main St" or "69 D St" are NOT matched.
     //   DW…   : e.g. DW, DWF, DWELL, DWELLING (uppercase only)
     //   BOX…  : e.g. BOX, BOXALARM, BOX1 (uppercase only)
     CODE_PATTERNS: [
-      /\b69-?E-?\d{0,2}[A-Z]?\b/,
-      /\b69-?D-?\d{0,2}[A-Z]?\b/,
+      /\b69[ED][A-Z0-9]{0,3}\b/,
       /\bDW[A-Z0-9]*\b/,
       /\bBOX[A-Z0-9]*\b/,
     ],

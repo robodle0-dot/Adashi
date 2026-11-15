@@ -1,7 +1,7 @@
 # Adashi Dwelling Fire Text Alert (Tampermonkey)
 
 `adashi-dwelling-fire-alert.user.js` watches the live Adashi page and texts your phone
-**once** when a new call appears with a code beginning in **69E** or **69D** (e.g. `69E01`,
+**once** when a new call appears with a code beginning in **69E** or **69D** followed by any letters or digits (e.g. `69E01`, `69EA1`,
 `69-D-6`), **DW** (e.g. `DW`, `DWF`, `DWELL`) or **BOX** (e.g. `BOX`, `BOXALARM`).
 
 ## Setup
