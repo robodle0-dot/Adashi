@@ -21,6 +21,25 @@
 4. Reload Adashi. Click the Tampermonkey icon → **Send test alert** to check delivery.
 5. Use Tampermonkey icon → **Show matching calls on screen** to check that it sees your calls.
 
+## What the alert looks like
+```
+FIRE CALL (69E01)
+Address: 412 N Oak Ridge Rd
+Units: E5, T5
+
+2026-000102 69E01 DWELLING FIRE 412 N Oak Ridge Rd E5 T5 10:05
+```
+The last part is the full call row, in case the address or units weren't picked out right.
+Units are often assigned after a call first appears. When new units are added, one
+**UNITS UPDATE** follow-up is sent after the unit list stops changing for 20 seconds.
+These follow-ups are sent for 15 minutes after the alert. Set `SEND_UNIT_UPDATES: false` to turn them off.
+
+The address and units are found automatically: first from table column headers (like "Address"/"Location" and
+"Units"), then from page elements named for them, then by pattern matching. If they come out wrong,
+put CSS selectors in `ADDRESS_SELECTOR` / `UNITS_SELECTOR` (see the comments in the script).
+The script can only read what is shown in the call list itself. It can't see units that appear
+only in a separate details panel.
+
 ## Behavior
 - Calls already on screen when the page loads do **not** text. Only calls that appear later do.
   (Set `ALERT_ON_CALLS_PRESENT_AT_LOAD: true` to change that.)
