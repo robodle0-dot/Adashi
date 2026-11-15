@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Adashi Dwelling Fire Text Alert
 // @namespace    adashi-dwelling-fire-alert
-// @version      1.3.0
+// @version      1.4.0
 // @description  Alerts your phone the first time a fire call (69E* / 69D* / DW* / BOX*) appears in Adashi, with its address.
 // @author       you
 // @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
@@ -75,6 +75,11 @@
 
     // Don't alert about calls that are already on screen when the page loads.
     ALERT_ON_CALLS_PRESENT_AT_LOAD: false,
+
+    // Only alert for calls whose time on the page (e.g. 15:54:49) is within
+    // this many minutes of now. This stops alerts for old calls when you
+    // switch to the "Closed" tab or change filters. 0 = no limit.
+    MAX_CALL_AGE_MINUTES: 30,
 
     // Forget calls after this many hours (keeps storage small).
     REMEMBER_HOURS: 24,
@@ -177,6 +182,30 @@
     return pieces.find(looksLikeAddress) || '';
   }
 
+  // Fallback: the first piece of text anywhere in the row that looks like an address.
+  function rowAddress(row) {
+    const w = textWalker(row);
+    let n;
+    while ((n = w.nextNode())) {
+      const t = trimSep(n.nodeValue);
+      if (looksLikeAddress(t) && !findCode(t)) return t;
+    }
+    return '';
+  }
+
+  // Minutes since the call's time shown in its row (first HH:MM or HH:MM:SS),
+  // or null if the row shows no time.
+  function callAgeMinutes(rowText) {
+    const m = rowText.match(/\b([01]?\d|2[0-3]):([0-5]\d)(?::([0-5]\d))?\b/);
+    if (!m) return null;
+    const now = new Date();
+    const t = new Date(now);
+    t.setHours(+m[1], +m[2], +(m[3] || 0), 0);
+    let mins = (now - t) / 60000;
+    if (mins < -10) mins += 24 * 60; // time is from yesterday (shortly before midnight)
+    return mins;
+  }
+
   // ---------- rows & detection ----------
   const STRONG_ROW = 'tr, [role="row"], li';
 
@@ -229,11 +258,13 @@
     while ((node = w.nextNode())) {
       const m = findCode(node.nodeValue);
       if (!m) continue;
+      // Ignore codes that are really part of an address ("DWIGHT AVE", "BOXWOOD RD").
+      if (looksLikeAddress(clean(node.nodeValue))) continue;
       const pieces = piecesAfter(node, m);
       const roughRow = findRow(node.parentElement, '');
       let address = findAddress(roughRow, pieces);
       const row = findRow(node.parentElement, address);
-      if (!address) address = findAddress(row, []);
+      if (!address) address = findAddress(row, []) || rowAddress(row);
       const text = rowText(row);
       const key = callKey(text, m[0], address);
       const prev = found.get(key);
@@ -324,7 +355,14 @@
     if (firstScan && !CONFIG.ALERT_ON_CALLS_PRESENT_AT_LOAD) {
       log('baseline: ignoring', fresh.length, 'call(s) already on screen');
     } else {
-      fresh.forEach(([, v]) => alertCall(v));
+      fresh.forEach(([, v]) => {
+        const age = callAgeMinutes(v.text);
+        if (CONFIG.MAX_CALL_AGE_MINUTES && age !== null && age > CONFIG.MAX_CALL_AGE_MINUTES) {
+          log('skipping old call', v.code, v.address, Math.round(age) + ' min old');
+          return;
+        }
+        alertCall(v);
+      });
     }
     firstScan = false;
   }

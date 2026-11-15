@@ -39,6 +39,9 @@ for the address element in `ADDRESS_SELECTOR`.
 ## Behavior
 - Calls already on screen when the page loads do **not** text. Only calls that appear later do.
   (Set `ALERT_ON_CALLS_PRESENT_AT_LOAD: true` to change that.)
+- Only calls whose time on the page is within the last 30 minutes alert (`MAX_CALL_AGE_MINUTES`).
+  So switching to the **Closed** tab or changing filters won't send alerts for old calls.
+- A code that is part of an address doesn't count, so "DWIGHT AVE" or "BOXWOOD RD" won't alert.
 - Each call alerts once. It is identified by its incident number (or by its code and address),
   so later status or timer changes do not send another alert. Calls are remembered for 24 hours, including across page reloads and multiple tabs.
 - `DWI` is ignored, and so are addresses like "69 E Main St" or "69 D St". Add more codes to ignore in `EXCLUDE_CODES`.
