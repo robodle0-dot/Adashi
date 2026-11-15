@@ -24,27 +24,23 @@
 ## What the alert looks like
 ```
 FIRE CALL (69E01)
-Address: 412 N Oak Ridge Rd
-Units: E5, T5
-
-2026-000102 69E01 DWELLING FIRE 412 N Oak Ridge Rd E5 T5 10:05
+412 N OAK RIDGE RD
 ```
-The last part is the full call row, in case the address or units weren't picked out right.
-Units are often assigned after a call first appears. When new units are added, one
-**UNITS UPDATE** follow-up is sent after the unit list stops changing for 20 seconds.
-These follow-ups are sent for 15 minutes after the alert. Set `SEND_UNIT_UPDATES: false` to turn them off.
+The address is the text that comes right after the call code on the page. The script skips
+timers, ID numbers and descriptions like "STRUCTURE FIRE" and takes the first piece that looks
+like an address. That can be a house number and street ("412 N OAK RIDGE"), a street name with
+a suffix like ST/RD/PIKE, a route ("RT 412"), or an intersection ("MAIN ST / OAK AVE").
+If no address is recognized, the alert includes the call's full text instead.
 
-The address and units are found automatically: first from table column headers (like "Address"/"Location" and
-"Units"), then from page elements named for them, then by pattern matching. If they come out wrong,
-put CSS selectors in `ADDRESS_SELECTOR` / `UNITS_SELECTOR` (see the comments in the script).
-The script can only read what is shown in the call list itself. It can't see units that appear
-only in a separate details panel.
+Use Tampermonkey icon → **Show matching calls on screen** to see what it reads for each call,
+including the text it found after the code. If the address comes out wrong, put a CSS selector
+for the address element in `ADDRESS_SELECTOR`.
 
 ## Behavior
 - Calls already on screen when the page loads do **not** text. Only calls that appear later do.
   (Set `ALERT_ON_CALLS_PRESENT_AT_LOAD: true` to change that.)
-- Each call texts once. It is identified by its incident number, so later status, unit or
-  timer changes do not send another text. Calls are remembered for 24 hours, including across page reloads and multiple tabs.
+- Each call alerts once. It is identified by its incident number (or by its code and address),
+  so later status or timer changes do not send another alert. Calls are remembered for 24 hours, including across page reloads and multiple tabs.
 - `DWI` is ignored, and so are addresses like "69 E Main St" or "69 D St". Add more codes to ignore in `EXCLUDE_CODES`.
 - The Adashi tab must stay open (it can be in the background). Keep the computer awake.
 - Use the menu to **Pause / resume alerts** or **Forget alerted calls**.
