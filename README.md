@@ -1,8 +1,8 @@
 # Adashi Dwelling Fire Text Alert (Tampermonkey)
 
 `adashi-dwelling-fire-alert.user.js` watches the live Adashi page and texts your phone
-**once** when a new call appears with a code beginning in **69E** or **69D** followed by any letters or digits (e.g. `69E01`, `69EA1`,
-`69-D-6`), **DW** (e.g. `DW`, `DWF`, `DWELL`) or **BOX** (e.g. `BOX`, `BOXALARM`).
+**once** when a new call appears with a code beginning in **69E** or **69D** followed by any letters or digits
+(e.g. `69E01`, `69EA1`, `69D06`), or **DW** (e.g. `DW`, `DWF`, `DWELL`).
 
 ## Setup
 
@@ -41,7 +41,7 @@ for the address element in `ADDRESS_SELECTOR`.
   (Set `ALERT_ON_CALLS_PRESENT_AT_LOAD: true` to change that.)
 - Only calls whose time on the page is within the last 30 minutes alert (`MAX_CALL_AGE_MINUTES`).
   So switching to the **Closed** tab or changing filters won't send alerts for old calls.
-- A code that is part of an address doesn't count, so "DWIGHT AVE" or "BOXWOOD RD" won't alert.
+- A code that is part of an address doesn't count, so "DWIGHT AVE" won't alert.
 - Each call alerts once. It is identified by its incident number (or by its code and address),
   so later status or timer changes do not send another alert. Calls are remembered for 24 hours, including across page reloads and multiple tabs.
 - `DWI` is ignored, and so are addresses like "69 E Main St" or "69 D St". Add more codes to ignore in `EXCLUDE_CODES`.

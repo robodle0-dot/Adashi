@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Adashi Dwelling Fire Text Alert
 // @namespace    adashi-dwelling-fire-alert
-// @version      1.5.0
-// @description  Alerts your phone the first time a fire call (69E* / 69D* / DW* / BOX*) appears in Adashi, with its address.
+// @version      1.6.0
+// @description  Alerts your phone the first time a fire call (69E* / 69D* / DW*) appears in Adashi, with its address.
 // @author       you
 // @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
 // @grant        GM_xmlhttpRequest
@@ -45,11 +45,9 @@
     //                 characters total, e.g. 69E01, 69D06, 69EA1; up to 6 allowed).
     //                 Addresses like "69 E Main St" or "69 D St" are NOT matched.
     //   DW…   : e.g. DW, DWF, DWELL, DWELLING (uppercase only)
-    //   BOX…  : e.g. BOX, BOXALARM, BOX1 (uppercase only)
     CODE_PATTERNS: [
       /\b69[ED][A-Z0-9]{0,3}\b/,
       /\bDW[A-Z0-9]*\b/,
-      /\bBOX[A-Z0-9]*\b/,
     ],
     // Codes that match a pattern above but should be ignored.
     EXCLUDE_CODES: ['DWI'],
@@ -258,7 +256,7 @@
     while ((node = w.nextNode())) {
       const m = findCode(node.nodeValue);
       if (!m) continue;
-      // Ignore codes that are really part of an address ("DWIGHT AVE", "BOXWOOD RD").
+      // Ignore codes that are really part of an address ("DWIGHT AVE", "DWYER RD").
       if (looksLikeAddress(clean(node.nodeValue))) continue;
       const pieces = piecesAfter(node, m);
       const roughRow = findRow(node.parentElement, '');
