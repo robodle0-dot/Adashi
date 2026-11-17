@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Adashi Fire Call TV Display
 // @namespace    adashi-fire-call-display
-// @version      1.0.0
-// @description  Shows fire calls (69E* / 69D* / DW* / BOX*) in big highlighted text on the Adashi screen, and sounds an alarm and reads the call aloud when a new one comes in.
+// @version      1.1.0
+// @description  When a new fire call (69E* / 69D* / DW*) comes in, shows it in big text on the Adashi screen for about a minute, sounds an alarm and reads the call aloud.
 // @author       you
 // @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
 // @grant        GM_getValue
@@ -22,12 +22,10 @@
     //   69E… / 69D… : MPDS Protocol 69 Echo/Delta (e.g. 69E01, 69-D-6).
     //                 Addresses like "69 E Main St" or "69 D St" are NOT matched.
     //   DW…   : e.g. DW, DWF, DWELL, DWELLING (uppercase only)
-    //   BOX…  : e.g. BOX, BOXALARM, BOX1 (uppercase only)
     CODE_PATTERNS: [
       /\b69-?E-?\d{0,2}[A-Z]?\b/,
       /\b69-?D-?\d{0,2}[A-Z]?\b/,
       /\bDW[A-Z0-9]*\b/,
-      /\bBOX[A-Z0-9]*\b/,
     ],
     // Codes that match a pattern above but should be ignored.
     EXCLUDE_CODES: ['DWI'],
@@ -53,23 +51,22 @@
     UNIT_PATTERN: /\b(?:(?:ENGINE|TRUCK|TOWER|LADDER|SQUAD|RESCUE|MEDIC|AMBULANCE|TANKER|BRUSH|CHIEF|BATTALION|UTILITY)\s?\d{1,4}|(?:ENG|TRK|TWR|BATT|BAT|BC|DC|AC|EMS|ATV|TK|TW|SQ|RE|RS|MD|AM|TN|BR|CH|UT|WS|E|T|L|Q|R|M|A|B|C|U)-?\d{1,4})[A-Z]?\b/g,
 
     // ---- On-screen display ----
-    SHOW_BANNER: true,          // big banner listing the fire calls
+    SHOW_BANNER: true,          // big banner when a new fire call comes in
+    BANNER_SECONDS: 60,         // banner closes by itself after this long (or when ACKNOWLEDGE is clicked)
     BANNER_POSITION: 'top',     // 'top' or 'bottom'
     TEXT_SIZE: 1,               // 1 = default; 1.5 = 50% bigger; 0.8 = smaller
-    HIGHLIGHT_ROWS: true,       // also highlight the call's row in Adashi's list
+    HIGHLIGHT_ROWS: true,       // also highlight fire calls' rows in Adashi's list (stays while the call is listed)
     ROW_TEXT_SCALE: 1.3,        // make highlighted rows' text this much bigger (1 = no change)
-    FLASH_SECONDS: 120,         // new calls flash this long (or until acknowledged)
 
     // ---- Sound ----
     SOUND: true,                // alarm tone for new calls
     SPEAK: true,                // read the code and address aloud after the tone
     VOLUME: 0.8,                // 0.0 – 1.0
     TONE_SECONDS: 4,            // length of the alarm tone
-    REPEAT_EVERY_SECONDS: 30,   // repeat until someone clicks ACKNOWLEDGE…
-    REPEAT_TIMES: 3,            // …up to this many extra times (0 = play once)
+    REPEAT_EVERY_SECONDS: 30,   // while the banner is up, repeat the alarm this often…
+    REPEAT_TIMES: 1,            // …up to this many extra times (0 = play once)
     SPEECH_RATE: 0.95,
-    // Play sound for calls that are already on screen when the page loads?
-    // (They are always shown on screen either way.)
+    // Alert (banner + sound) for calls that are already on screen when the page loads?
     SOUND_FOR_CALLS_AT_LOAD: false,
 
     REMEMBER_HOURS: 24,
@@ -224,7 +221,6 @@
     .${PREFIX}-banner{position:fixed;left:0;right:0;${CONFIG.BANNER_POSITION === 'bottom' ? 'bottom' : 'top'}:0;z-index:2147483646;
       background:#1a0000;color:#fff;font-family:Arial,Helvetica,sans-serif;box-shadow:0 0 24px rgba(0,0,0,.6);
       border:6px solid #ff1a1a;max-height:70vh;overflow:auto}
-    .${PREFIX}-banner.${PREFIX}-min .${PREFIX}-call{display:none}
     .${PREFIX}-head{display:flex;align-items:center;gap:12px;padding:6px 14px;background:#c00000;
       font-size:${1.6 * S}vw;font-weight:bold;letter-spacing:.05em}
     .${PREFIX}-head span{flex:1}
@@ -291,6 +287,7 @@
     const gain = audioCtx.createGain();
     gain.gain.value = CONFIG.VOLUME * 0.5;
     gain.connect(audioCtx.destination);
+    currentTone = gain;
     const step = 0.35; // hi-lo alternating alarm
     const n = Math.max(1, Math.round(CONFIG.TONE_SECONDS / step));
     for (let i = 0; i < n; i++) {
@@ -315,7 +312,6 @@
     const m = c.match(/^69([ED])(\d*)([A-Z]?)$/);
     if (m) return [69, m[1] === 'E' ? 'Echo' : 'Delta', m[2] ? parseInt(m[2], 10) : '', m[3]].filter((x) => x !== '').join(' ');
     if (c.startsWith('DW')) return 'Dwelling fire';
-    if (c.startsWith('BOX')) return 'Box alarm';
     return c.split('').join(' ');
   }
   const speakAddress = (a) => a.replace(/\b([A-Z]{1,4})\b\.?/gi, (w, x) => SPOKEN_WORDS[x.toUpperCase()] || w);
@@ -332,15 +328,25 @@
     });
   }
 
+  let currentTone = null; // so ACKNOWLEDGE can cut the tone off
+  let ackCount = 0;        // bumps on ACKNOWLEDGE so a running announcement stops
+  function stopSound() {
+    ackCount++;
+    if (currentTone) { try { currentTone.disconnect(); } catch (e) { /* ignore */ } currentTone = null; }
+    if (window.speechSynthesis) speechSynthesis.cancel();
+  }
+
   let playing = false;
   async function announce(calls) {
     if (!soundOn()) return;
     if (!unlocked) { showUnlockButton(); return; }
     if (playing) return;
     playing = true;
+    const myAck = ackCount;
     try {
       await playTone();
       for (const c of calls) {
+        if (ackCount !== myAck) break;
         const parts = ['Fire call', speakCode(c.code)];
         if (c.callType) parts.push(c.callType);
         if (c.address) parts.push(speakAddress(c.address));
@@ -351,7 +357,7 @@
 
   // ---------- display ----------
   const state = new Map(); // key -> {call, firstSeen, newUntil, acked, repeatsLeft, nextRepeat}
-  let banner = null, listEl = null, minimized = false;
+  let banner = null, listEl = null;
 
   function el(tag, cls, text) {
     const e = document.createElement(tag);
@@ -366,20 +372,18 @@
     const head = el('div', `${PREFIX}-head`);
     const title = el('span', null, '🔥 FIRE CALL');
     const ack = el('button', `${PREFIX}-btn`, 'ACKNOWLEDGE');
-    ack.title = 'Stop the sound and flashing';
+    ack.title = 'Stop the sound and close this banner';
     ack.addEventListener('click', acknowledgeAll);
-    const min = el('button', `${PREFIX}-btn ${PREFIX}-ghost`, 'Hide');
-    min.addEventListener('click', () => { minimized = !minimized; render(); });
-    head.append(title, ack, min);
+    head.append(title, ack);
     listEl = el('div');
     banner.append(head, listEl);
-    banner._title = title; banner._ack = ack; banner._min = min;
+    banner._title = title;
     document.body.appendChild(banner);
   }
 
   function acknowledgeAll() {
     for (const s of state.values()) { s.acked = true; s.newUntil = 0; s.repeatsLeft = 0; }
-    if (window.speechSynthesis) speechSynthesis.cancel();
+    stopSound();
     render();
   }
 
@@ -400,22 +404,21 @@
     }
 
     if (!CONFIG.SHOW_BANNER) return;
-    if (!calls.length) {
+    // The banner only shows calls whose alert is still running (BANNER_SECONDS).
+    const alerting = calls.filter((s) => s.newUntil > now);
+    if (!alerting.length) {
       if (banner) { banner.remove(); banner = null; lastRender = ''; }
       return;
     }
     ensureBanner();
-    const sig = JSON.stringify([minimized, calls.map((s) => [s.call.code, s.call.callType, s.call.address, s.call.units, s.newUntil > now])]);
+    const sig = JSON.stringify(alerting.map((s) => [s.call.code, s.call.callType, s.call.address, s.call.units]));
     if (sig === lastRender) return; // nothing changed; don't touch the DOM
     lastRender = sig;
 
-    banner.classList.toggle(`${PREFIX}-min`, minimized);
-    banner._title.textContent = `🔥 FIRE CALL${calls.length > 1 ? 'S (' + calls.length + ')' : ''}`;
-    banner._ack.style.display = calls.some((s) => s.newUntil > now || s.repeatsLeft > 0) ? '' : 'none';
-    banner._min.textContent = minimized ? 'Show' : 'Hide';
-    listEl.replaceChildren(...calls.map((s) => {
+    banner._title.textContent = `🔥 FIRE CALL${alerting.length > 1 ? 'S (' + alerting.length + ')' : ''}`;
+    listEl.replaceChildren(...alerting.map((s) => {
       const c = s.call;
-      const box = el('div', `${PREFIX}-call` + (s.newUntil > now ? ` ${PREFIX}-new` : ''));
+      const box = el('div', `${PREFIX}-call ${PREFIX}-new`);
       const l1 = el('div', `${PREFIX}-l1`);
       l1.append(el('span', `${PREFIX}-code`, c.code), document.createTextNode(c.callType || ''));
       box.append(l1);
@@ -443,7 +446,7 @@
       const isNew = !seen[key] && (!firstScan || CONFIG.SOUND_FOR_CALLS_AT_LOAD);
       state.set(key, {
         call, firstSeen: now, acked: !isNew,
-        newUntil: isNew ? now + CONFIG.FLASH_SECONDS * 1000 : 0,
+        newUntil: isNew ? now + CONFIG.BANNER_SECONDS * 1000 : 0,
         repeatsLeft: isNew ? CONFIG.REPEAT_TIMES : 0,
         nextRepeat: now + CONFIG.REPEAT_EVERY_SECONDS * 1000,
       });
@@ -454,11 +457,10 @@
     firstScan = false;
 
     if (brandNew.length) {
-      minimized = false;
       log('NEW', brandNew);
       announce(brandNew);
     } else {
-      const due = [...state.values()].filter((s) => !s.acked && s.repeatsLeft > 0 && now >= s.nextRepeat);
+      const due = [...state.values()].filter((s) => !s.acked && s.newUntil > now && s.repeatsLeft > 0 && now >= s.nextRepeat);
       if (due.length) {
         due.forEach((s) => { s.repeatsLeft--; s.nextRepeat = now + CONFIG.REPEAT_EVERY_SECONDS * 1000; });
         announce(due.map((s) => s.call));
@@ -476,7 +478,7 @@
       if (records.every((r) => isOurs(r.target.nodeType === 1 ? r.target : r.target.parentElement || document.body))) return;
       schedule();
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
-    setInterval(check, 2000); // also drives flashing timeout & repeats
+    setInterval(check, 2000); // also closes the banner on time & drives repeats
     if (CONFIG.SOUND || CONFIG.SPEAK) showUnlockButton();
   }, 3000);
 
@@ -485,15 +487,14 @@
     const row = el('div');
     const key = 'test:' + Date.now();
     const call = { code: '69E01', callType: 'TEST - DWELLING FIRE', address: '123 N Main St', units: ['E5', 'T5'], text: '', row };
-    state.set(key, { call, firstSeen: Date.now(), acked: false, newUntil: Date.now() + 15000, repeatsLeft: 0, nextRepeat: Infinity });
-    minimized = false;
+    state.set(key, { call, firstSeen: Date.now(), acked: false, newUntil: Date.now() + CONFIG.BANNER_SECONDS * 1000, repeatsLeft: 0, nextRepeat: Infinity });
     render();
     announce([call]);
-    setTimeout(() => { state.delete(key); render(); }, 20000); // remove the fake call after 20 s
+    setTimeout(() => { state.delete(key); render(); }, CONFIG.BANNER_SECONDS * 1000 + 3000);
   });
   GM_registerMenuCommand('Sound on / off', () => {
     GM_setValue(ENABLED_KEY, !soundOn());
-    if (!soundOn() && window.speechSynthesis) speechSynthesis.cancel();
+    if (!soundOn()) stopSound();
     alert('Fire call sound is now ' + (soundOn() ? 'ON' : 'OFF') + '. Calls still show on screen.');
   });
   GM_registerMenuCommand('Forget announced calls', () => {

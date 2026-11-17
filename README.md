@@ -2,7 +2,8 @@
 
 `adashi-dwelling-fire-alert.user.js` watches the live Adashi page and texts your phone
 **once** when a new call appears with a code beginning in **69E** or **69D** (e.g. `69E01`,
-`69-D-6`), **DW** (e.g. `DW`, `DWF`, `DWELL`) or **BOX** (e.g. `BOX`, `BOXALARM`).
+`69-D-6`) or **DW** (e.g. `DW`, `DWF`, `DWELL`). BOX calls are not included, because they often turn out
+to be PAC/PAR calls rather than fires.
 
 ## Setup
 
@@ -60,17 +61,20 @@ only in a separate details panel.
 
 # Adashi Fire Call TV Display (Tampermonkey)
 
-`adashi-fire-call-display.user.js` is for a laptop showing Adashi on a TV. When a call with a code
-beginning in **69E**, **69D**, **DW** or **BOX** is on the Adashi page, it:
+`adashi-fire-call-display.user.js` is for a laptop showing Adashi on a TV. When a **new** call with a code
+beginning in **69E**, **69D** or **DW** comes in, it:
 
-- shows a **large banner** across the top of the screen with the code, call type, **address** (largest text) and units;
-- **highlights** that call's row in Adashi's own list (yellow with a red outline and bigger text);
-- for a **new** call: flashes the banner, plays a **hi-lo alarm tone**, then **reads the call aloud**
-  ("Fire call. 69 Echo 1. Dwelling fire. 412 North Oak Ridge Road."). The alarm repeats every 30 seconds
-  (3 more times) until someone clicks **ACKNOWLEDGE**.
+- pops up a **large flashing banner** across the top of the screen with the code, call type,
+  **address** (largest text) and units. The banner **closes by itself after 60 seconds**, or right away
+  when someone clicks **ACKNOWLEDGE**;
+- plays a **hi-lo alarm tone**, then **reads the call aloud**
+  ("Fire call. 69 Echo 1. Dwelling fire. 412 North Oak Ridge Road."). The alarm plays once more after
+  30 seconds unless someone clicks **ACKNOWLEDGE**, which also stops the sound immediately;
+- **highlights** the call's row in Adashi's own list (yellow with a red outline and bigger text). The highlight
+  stays for as long as the call is listed in Adashi, after the banner has closed.
 
-The banner updates as units are assigned, and a call drops off the banner when it leaves the Adashi list.
-Calls already on screen when the page loads are shown right away but do not sound.
+BOX calls are not included (they often turn out to be PAC/PAR calls). The units on the banner update as they're assigned.
+Calls already on screen when the page loads get the row highlight only, with no banner or sound.
 It runs alongside the text-alert script above. You can install both.
 
 ## Setup
@@ -85,7 +89,7 @@ It runs alongside the text-alert script above. You can install both.
 
 ## Settings (top of the script)
 - `TEXT_SIZE`: `1.5` makes everything 50% bigger on the TV. `ROW_TEXT_SCALE` sets the highlighted row's size.
-- `BANNER_POSITION`: `'top'` or `'bottom'`. Click **Hide** to collapse the banner. It reopens on the next new call.
+- `BANNER_SECONDS`: how long the banner stays up (default `60`). `BANNER_POSITION`: `'top'` or `'bottom'`.
 - `SOUND`, `SPEAK`, `VOLUME`, `TONE_SECONDS`, `REPEAT_EVERY_SECONDS`, `REPEAT_TIMES`.
 - `PENDING_ONLY: true` shows only calls whose row also says "Pending" (change `PENDING_PATTERN` to match Adashi's wording).
 - Menu → **Sound on / off** silences it while still showing calls.
