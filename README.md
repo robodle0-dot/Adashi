@@ -54,3 +54,39 @@ for the address element in `ADDRESS_SELECTOR`.
   If your incident numbers look different from `2026-001234`, adjust `INCIDENT_ID_PATTERN`.
 - Set `DEBUG: true` and open the console (F12) to see what it is doing.
 - Your Twilio token sits in plain text inside the script. Only use this on a computer you trust.
+
+---
+
+# Adashi Fire Call TV Display (Tampermonkey)
+
+`adashi-fire-call-display.user.js` is for a laptop showing Adashi on a TV. When a call with a code
+beginning in **69E**, **69D**, **DW** or **BOX** is on the Adashi page, it:
+
+- shows a **large banner** across the top of the screen with the code, call type, **address** (largest text) and units;
+- **highlights** that call's row in Adashi's own list (yellow with a red outline and bigger text);
+- for a **new** call: flashes the banner, plays a **hi-lo alarm tone**, then **reads the call aloud**
+  ("Fire call. 69 Echo 1. Dwelling fire. 412 North Oak Ridge Road."). The alarm repeats every 30 seconds
+  (3 more times) until someone clicks **ACKNOWLEDGE**.
+
+The banner updates as units are assigned, and a call drops off the banner when it leaves the Adashi list.
+Calls already on screen when the page loads are shown right away but do not sound.
+It runs alongside the text-alert script above. You can install both.
+
+## Setup
+1. Tampermonkey → *Create a new script* → paste `adashi-fire-call-display.user.js` → **Save**.
+   The `@match` line is already set to the BCFD Adashi incidents page.
+2. Reload Adashi. **Click once anywhere on the page** (or on the red *Click here to turn on fire call sound*
+   button). Browsers block sound until someone clicks the page, so do this after every reload.
+3. Tampermonkey icon → **Test: show a fake fire call** to check the banner and sound on the TV.
+4. Casting: Chrome's *Cast tab* sends tab audio to the TV. *Cast screen/desktop* may keep the sound on the
+   laptop. If you hear nothing on the TV, check the cast mode or plug in a speaker.
+   Keep the laptop from sleeping, and don't mute the Adashi tab.
+
+## Settings (top of the script)
+- `TEXT_SIZE`: `1.5` makes everything 50% bigger on the TV. `ROW_TEXT_SCALE` sets the highlighted row's size.
+- `BANNER_POSITION`: `'top'` or `'bottom'`. Click **Hide** to collapse the banner. It reopens on the next new call.
+- `SOUND`, `SPEAK`, `VOLUME`, `TONE_SECONDS`, `REPEAT_EVERY_SECONDS`, `REPEAT_TIMES`.
+- `PENDING_ONLY: true` shows only calls whose row also says "Pending" (change `PENDING_PATTERN` to match Adashi's wording).
+- Menu → **Sound on / off** silences it while still showing calls.
+- If the address, units or call type come out wrong, set `ADDRESS_SELECTOR`, `UNITS_SELECTOR`, `CALL_TYPE_SELECTOR`
+  or `ROW_SELECTOR` as described in "If something is off" above.
