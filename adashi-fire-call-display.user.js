@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Adashi Fire Call TV Display
 // @namespace    adashi-fire-call-display
-// @version      1.1.0
+// @version      1.2.0
 // @description  When a new fire call (69E* / 69D* / DW*) comes in, shows it in big text on the Adashi screen for about a minute, sounds an alarm and reads the call aloud.
 // @author       you
 // @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
@@ -62,7 +62,7 @@
     SOUND: true,                // alarm tone for new calls
     SPEAK: true,                // read the code and address aloud after the tone
     VOLUME: 0.8,                // 0.0 – 1.0
-    TONE_SECONDS: 4,            // length of the alarm tone
+    TONE_SECONDS: 2,            // length of the alarm tone (the address is read out right after it)
     REPEAT_EVERY_SECONDS: 30,   // while the banner is up, repeat the alarm this often…
     REPEAT_TIMES: 1,            // …up to this many extra times (0 = play once)
     SPEECH_RATE: 0.95,
@@ -194,6 +194,39 @@
     return { address, units, callType };
   }
 
+  // ---------- speed check: when did each call first show up on this page? ----------
+  const firstShown = new Map(); // incident number -> {at, text, atLoad}
+  let loadDone = false, hiddenCount = 0, hiddenSince = document.hidden ? Date.now() : 0, hiddenMs = 0;
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { hiddenCount++; hiddenSince = Date.now(); }
+    else if (hiddenSince) { hiddenMs += Date.now() - hiddenSince; hiddenSince = 0; }
+  });
+  function noteRow(text) {
+    const id = text.match(CONFIG.INCIDENT_ID_PATTERN);
+    if (!id || firstShown.has(id[0]) || text.length > 400) return;
+    firstShown.set(id[0], { at: new Date(), text: text.slice(0, 110), atLoad: !loadDone });
+    if (firstShown.size > 300) firstShown.delete(firstShown.keys().next().value);
+  }
+  function speedReport() {
+    const fmt = (d) => d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const recent = [...firstShown.values()].filter((r) => !r.atLoad).slice(-8).reverse();
+    const lines = [
+      'SPEED CHECK',
+      '',
+      'Compare the time each call showed up on this page with when it was',
+      'actually created or dispatched (the time in the row, or Adashi on another device).',
+      'A big gap means Adashi itself is slow to put the call on this page.',
+      '',
+    ];
+    if (recent.length) recent.forEach((r) => lines.push(`${fmt(r.at)}  ${r.text}`));
+    else lines.push('(No new calls have shown up since the page loaded. Check again after the next call.)');
+    const hiddenNow = document.hidden;
+    lines.push('', hiddenNow || hiddenCount
+      ? `WARNING: this tab ${hiddenNow ? 'is hidden right now' : 'was hidden'} (${hiddenCount}x, ~${Math.round((hiddenMs + (hiddenSince ? Date.now() - hiddenSince : 0)) / 60000)} min total). Browsers slow down hidden or minimized tabs, and that can delay both Adashi's refresh and this alert. Keep the Adashi tab on screen.`
+      : 'OK: this tab has stayed visible since it loaded.');
+    alert(lines.join('\n'));
+  }
+
   const isOurs = (el) => !!(el.closest && el.closest(`.${PREFIX}-ui`));
 
   function scan() {
@@ -203,6 +236,7 @@
       if (isOurs(row)) return;
       const text = clean(row.innerText);
       if (!text || text.length > 2000) return;
+      noteRow(text);
       const code = findCode(text);
       if (!code) return;
       if (CONFIG.PENDING_ONLY && !CONFIG.PENDING_PATTERN.test(text)) return;
@@ -455,6 +489,7 @@
     const unseen = [...found.keys()].filter((k) => !seen[k]);
     if (unseen.length) markSeen(unseen);
     firstScan = false;
+    loadDone = true;
 
     if (brandNew.length) {
       log('NEW', brandNew);
@@ -469,8 +504,10 @@
     render();
   }
 
+  // Check soon after the page changes. (This used to wait for the page to be quiet for
+  // 0.5 s, which a page with ticking timers may never be, so it fell back to the 2 s timer.)
   let timer = null;
-  const schedule = () => { clearTimeout(timer); timer = setTimeout(check, 500); };
+  const schedule = () => { if (!timer) timer = setTimeout(() => { timer = null; check(); }, 150); };
 
   setTimeout(() => {
     check();
@@ -478,7 +515,7 @@
       if (records.every((r) => isOurs(r.target.nodeType === 1 ? r.target : r.target.parentElement || document.body))) return;
       schedule();
     }).observe(document.body, { childList: true, subtree: true, characterData: true });
-    setInterval(check, 2000); // also closes the banner on time & drives repeats
+    setInterval(check, 1000); // safety net; also closes the banner on time & drives repeats
     if (CONFIG.SOUND || CONFIG.SPEAK) showUnlockButton();
   }, 3000);
 
@@ -492,6 +529,7 @@
     announce([call]);
     setTimeout(() => { state.delete(key); render(); }, CONFIG.BANNER_SECONDS * 1000 + 3000);
   });
+  GM_registerMenuCommand('Speed check', speedReport);
   GM_registerMenuCommand('Sound on / off', () => {
     GM_setValue(ENABLED_KEY, !soundOn());
     if (!soundOn()) stopSound();

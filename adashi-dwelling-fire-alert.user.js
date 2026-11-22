@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Adashi Dwelling Fire Text Alert
 // @namespace    adashi-dwelling-fire-alert
-// @version      1.3.0
+// @version      1.4.0
 // @description  Texts your phone the first time a fire call (69E* / 69D* / DW*) appears in Adashi.
 // @author       you
 // @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
@@ -359,8 +359,10 @@
     firstScan = false;
   }
 
+  // Check soon after the page changes. (This used to wait for the page to be quiet for
+  // 0.75 s, which on a page with ticking timers could mean waiting for the 10 s safety net.)
   let timer = null;
-  const schedule = () => { clearTimeout(timer); timer = setTimeout(check, 750); };
+  const schedule = () => { if (!timer) timer = setTimeout(() => { timer = null; check(); }, 200); };
 
   // Give the app a moment to render its call list before the baseline scan.
   setTimeout(() => {
@@ -368,7 +370,7 @@
     new MutationObserver(schedule).observe(document.body, {
       childList: true, subtree: true, characterData: true,
     });
-    setInterval(check, 10000); // safety net
+    setInterval(check, 3000); // safety net
   }, 5000);
 
   // ---------- Tampermonkey menu ----------

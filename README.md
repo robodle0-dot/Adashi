@@ -95,3 +95,19 @@ It runs alongside the text-alert script above. You can install both.
 - Menu → **Sound on / off** silences it while still showing calls.
 - If the address, units or call type come out wrong, set `ADDRESS_SELECTOR`, `UNITS_SELECTOR`, `CALL_TYPE_SELECTOR`
   or `ROW_SELECTOR` as described in "If something is off" above.
+
+## Slow alerts?
+Both scripts react within about 0.2 seconds of a call appearing on the Adashi page. The things that can
+make an alert late are mostly outside the scripts:
+
+- **Adashi's own refresh.** The scripts can only see a call once Adashi puts it on this page. Use
+  Tampermonkey menu → **Speed check** (TV display script) after a call. It lists the time each new call showed up
+  on the page. If that's well after the call was created, the delay is in Adashi or the network, not the script.
+- **The call isn't on this page, or doesn't have its code yet, while it's pending.** Pending calls might only
+  show in a different Adashi view, as a different element, or without the 69E/69D/DW code until a dispatcher
+  sets it. Look at a pending call in Adashi: if it's missing from the incidents list, or its row doesn't
+  show the code yet, the scripts can't alert on it until that changes.
+- **Hidden or minimized tab.** Browsers slow down tabs that aren't on screen, including Adashi's refresh.
+  Keep the Adashi tab visible. The Speed check warns you if the tab has been hidden.
+- **Power saving.** Keep the laptop plugged in, turn off Chrome's *Energy Saver* (Settings → Performance) or add
+  the Adashi site to its "Always keep these sites active" list, and set Windows power mode to Best performance.
