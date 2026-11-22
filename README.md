@@ -109,5 +109,5 @@ make an alert late are mostly outside the scripts:
   show the code yet, the scripts can't alert on it until that changes.
 - **Hidden or minimized tab.** Browsers slow down tabs that aren't on screen, including Adashi's refresh.
   Keep the Adashi tab visible. The Speed check warns you if the tab has been hidden.
-- **Power saving.** Keep the laptop plugged in, turn off Chrome's *Energy Saver* (Settings → Performance) or add
-  the Adashi site to its "Always keep these sites active" list, and set Windows power mode to Best performance.
+- **Power saving.** Keep the laptop plugged in and set Windows power mode to Best performance. In Chrome
+  (Settings → Performance), turn off *Energy saver* and add the Adashi site to *Always keep these sites active*.
