@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         Adashi Dwelling Fire Text Alert
 // @namespace    adashi-dwelling-fire-alert
-// @version      1.6.0
+// @version      1.7.0
 // @description  Alerts your phone the first time a fire call (69E* / 69D* / DW*) appears in Adashi, with its address.
 // @author       you
 // @match        https://live.adashi.com/bcfd/apps/AdashiNotify/app/incidents*
@@ -70,6 +70,10 @@
     // never alerts twice even when its status/times change.
     // Default matches things like 2026-001234, 26-12345, F26001234.
     INCIDENT_ID_PATTERN: /\b[A-Z]{0,4}\d{2,4}-?\d{4,8}\b/,
+    // Only alert for calls that show an incident number (like F263190428).
+    // This ignores other places a code can appear on the page (pop-ups,
+    // pending-call boxes, etc.), which otherwise cause a second alert.
+    REQUIRE_INCIDENT_ID: true,
 
     // Don't alert about calls that are already on screen when the page loads.
     ALERT_ON_CALLS_PRESENT_AT_LOAD: false,
@@ -264,6 +268,7 @@
       const row = findRow(node.parentElement, address);
       if (!address) address = findAddress(row, []) || rowAddress(row);
       const text = rowText(row);
+      if (CONFIG.REQUIRE_INCIDENT_ID && !CONFIG.INCIDENT_ID_PATTERN.test(text)) continue;
       const key = callKey(text, m[0], address);
       const prev = found.get(key);
       if (!prev || (!prev.address && address)) found.set(key, { code: m[0], address, text, pieces });
